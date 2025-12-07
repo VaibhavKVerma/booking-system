@@ -1,6 +1,7 @@
 package com.booking.common.exception;
 
 import com.booking.common.util.ErrorResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
@@ -19,13 +21,14 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errorDetails.put(error.getField(), error.getDefaultMessage());
         }
-
+        log.error("Validation failed for the submitted request : {}", errorDetails);
         ErrorResponse errorResponse = new ErrorResponse(
-                errorDetails.toString(),
+                "Validation failed for the submitted request.",
                 HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_ERROR",
                 errorDetails
         );
+        errorResponse.setTimestamp(System.currentTimeMillis());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
@@ -38,6 +41,7 @@ public class GlobalExceptionHandler {
                 "NOT_FOUND",
                 null
         );
+        errorResponse.setTimestamp(System.currentTimeMillis());
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
@@ -49,6 +53,7 @@ public class GlobalExceptionHandler {
                 "INTERNAL_SERVER_ERROR",
                 null
         );
+        errorResponse.setTimestamp(System.currentTimeMillis());
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

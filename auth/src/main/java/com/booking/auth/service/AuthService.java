@@ -1,54 +1,50 @@
 package com.booking.auth.service;
 
-import com.booking.common.dto.auth.LoginRequestDto;
+import com.booking.auth.dto.LoginRequestDto;
+import com.booking.auth.dto.SignupRequestDto;
+import com.booking.auth.entity.User;
+import com.booking.auth.mapper.SignUpMapper;
+import com.booking.auth.mapper.UserMapper;
+import com.booking.auth.repository.UserRepository;
+import com.booking.common.dto.auth.UserResponseDto;
+import com.booking.common.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthService {
-    private final AuthenticationManager authenticationManager;
+public class AuthService implements UserDetailsService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public CustomUserDetails login(@RequestBody LoginRequestDto req) {
-        log.info("Login Request: {}", req);
-        if(StringUtils.isNotBlank(req.getEmail()) && StringUtils.isNotBlank(req.getPassword())) {
-            return loginWithEmail(req);
-        }
-        if(StringUtils.isNotBlank(req.getUsername()) && StringUtils.isNotBlank(req.getPassword())) {
-            return loginWithUsername(req);
-        }
-        log.info("Invalid Credentials");
-        return null;
+    public UserResponseDto registerUser(SignupRequestDto requestDto) {
+        User user = SignUpMapper.signUpRequestToEntity(requestDto);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return UserMapper.toUserResponseDto(userRepository.save(user));
     }
 
-    public CustomUserDetails loginWithUsername(@RequestBody LoginRequestDto req) {
-        log.info("Login Request With Username: {}", req);
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.getUsername(),
-                        req.getPassword()
-                )
-        );
-        log.info("Authenticated User By Username: {}", auth.getPrincipal());
-        return (CustomUserDetails) auth.getPrincipal();
+    @Override
+    public User loadUserByUsername(String email) throws UsernameNotFoundException {
+        Optional<User> user = userRepository.findByEmail(email);
+        return user.orElse(null);
     }
 
-    public CustomUserDetails loginWithEmail(@RequestBody LoginRequestDto req) {
-        log.info("Login Request With Email: {}", req);
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.getEmail(),
-                        req.getPassword()
-                )
-        );
-        log.info("Authenticated User By Email: {}", auth.getPrincipal());
-        return (CustomUserDetails) auth.getPrincipal();
+    public UserResponseDto loginUser(LoginRequestDto requestDto) {
+        User user = loadUserByUsername(requestDto.getEmail());
+        if (user == null) {
+            throw new NotFoundException("No email in the database: " + requestDto.getEmail());
+        }
+        boolean matches = passwordEncoder.matches(requestDto.getPassword(), user.getPassword());
+        if (!matches) {
+            throw new NotFoundException("Incorrect Password for email : " + user.getEmail());
+        }
+        return UserMapper.toUserResponseDto(user);
     }
 }

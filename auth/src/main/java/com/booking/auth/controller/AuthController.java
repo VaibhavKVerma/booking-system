@@ -1,10 +1,12 @@
 package com.booking.auth.controller;
 
-import com.booking.common.dto.auth.LoginRequestDto;
-import com.booking.common.dto.auth.LoginResponseDto;
+import com.booking.auth.dto.LoginRequestDto;
+import com.booking.auth.dto.SignupRequestDto;
 import com.booking.auth.service.AuthService;
-import com.booking.auth.service.CustomUserDetails;
+import com.booking.common.dto.auth.UserResponseDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,15 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService authService;
 
+    @PostMapping("/signup")
+    public ResponseEntity<UserResponseDto> signup(@RequestBody @Valid SignupRequestDto requestDto) {
+        UserResponseDto userResponseDto = authService.registerUser(requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto);
+    }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto req) {
-        CustomUserDetails userLoginDetails = authService.login(req);
-
-        LoginResponseDto response = LoginResponseDto.builder()
-                .userId(userLoginDetails.getUserId())
-                .build();
-
-        return ResponseEntity.ok(response);
+    public ResponseEntity<UserResponseDto> login(@RequestBody @Valid LoginRequestDto requestDto) {
+        UserResponseDto userResponseDto = authService.loginUser(requestDto);
+        return ResponseEntity.status(HttpStatus.OK).body(userResponseDto);
     }
 }
